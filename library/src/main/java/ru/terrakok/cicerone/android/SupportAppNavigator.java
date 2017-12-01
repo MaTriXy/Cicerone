@@ -1,6 +1,7 @@
 package ru.terrakok.cicerone.android;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
@@ -51,23 +52,23 @@ public abstract class SupportAppNavigator extends SupportFragmentNavigator {
     public void applyCommand(Command command) {
         if (command instanceof Forward) {
             Forward forward = (Forward) command;
-            Intent activityIntent = createActivityIntent(forward.getScreenKey(), forward.getTransitionData());
+            Intent activityIntent = createActivityIntent(activity, forward.getScreenKey(), forward.getTransitionData());
 
             // Start activity
             if (activityIntent != null) {
                 Bundle options = createStartActivityOptions(command, activityIntent);
-                activity.startActivity(activityIntent, options);
+                checkAndStartActivity(forward.getScreenKey(), activityIntent, options);
                 return;
             }
 
         } else if (command instanceof Replace) {
             Replace replace = (Replace) command;
-            Intent activityIntent = createActivityIntent(replace.getScreenKey(), replace.getTransitionData());
+            Intent activityIntent = createActivityIntent(activity, replace.getScreenKey(), replace.getTransitionData());
 
             // Replace activity
             if (activityIntent != null) {
                 Bundle options = createStartActivityOptions(command, activityIntent);
-                activity.startActivity(activityIntent, options);
+                checkAndStartActivity(replace.getScreenKey(), activityIntent, options);
                 activity.finish();
                 return;
             }
@@ -75,6 +76,25 @@ public abstract class SupportAppNavigator extends SupportFragmentNavigator {
 
         // Use default fragments navigation
         super.applyCommand(command);
+    }
+
+    private void checkAndStartActivity(String screenKey, Intent activityIntent, Bundle options) {
+        // Check if we can start activity
+        if (activityIntent.resolveActivity(activity.getPackageManager()) != null) {
+            activity.startActivity(activityIntent, options);
+        } else {
+            unexistingActivity(screenKey, activityIntent);
+        }
+    }
+
+    /**
+     * Called when there is no activity to open {@code screenKey}.
+     *
+     * @param screenKey screen key
+     * @param activityIntent intent passed to start Activity for the {@code screenKey}
+     */
+    protected void unexistingActivity(String screenKey, Intent activityIntent) {
+        // Do nothing by default
     }
 
     /**
@@ -87,7 +107,7 @@ public abstract class SupportAppNavigator extends SupportFragmentNavigator {
      * @param data      initialization data, can be null
      * @return intent to start Activity for the passed screen key
      */
-    protected abstract Intent createActivityIntent(String screenKey, Object data);
+    protected abstract Intent createActivityIntent(Context context, String screenKey, Object data);
 
     @Override
     protected void showSystemMessage(String message) {
