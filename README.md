@@ -1,191 +1,242 @@
 # Cicerone
-[![jCenter](https://api.bintray.com/packages/terrakok/terramaven/cicerone/images/download.svg)](https://bintray.com/terrakok/terramaven/cicerone/_latestVersion)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.terrakok/cicerone)](https://repo1.maven.org/maven2/com/github/terrakok/cicerone/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
-
-[![Join the chat at https://gitter.im/terrakok/Cicerone](https://img.shields.io/badge/Gitter-Join%20Chat-brightred.svg?style=flat)](https://gitter.im/terrakok/Cicerone)  
 
 [![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-Cicerone-green.svg?style=true)](https://android-arsenal.com/details/1/4700)
 [![Android Weekly](https://img.shields.io/badge/Android%20Weekly-250-green.svg)](http://androidweekly.net/issues/issue-250)
 [![Android Weekly](https://img.shields.io/badge/Android%20Weekly-271-green.svg)](http://androidweekly.net/issues/issue-271)  
 
-![](https://habrastorage.org/files/644/32e/9eb/64432e9eb3664723b3ee438449dab3b0.png)
+<table>
+    <tr>
+        <td>
+            <img src="https://github.com/terrakok/Cicerone/raw/master/media/navigation.gif" width="256"/>
+        </td>
+        <td>
+            <img src="https://github.com/terrakok/Cicerone/raw/master/media/insta_tabs.gif" width="256"/>
+        </td>
+        <td>
+            <img src="https://github.com/terrakok/Cicerone/raw/master/media/animations.gif" width="256"/>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            Power navigation
+        </td>
+        <td>
+            Multibackstack
+        </td>
+        <td>
+            Result listeners
+        </td>
+    </tr>
+</table>
 
-Cicerone (a guide, one who conducts sightseers) is a lightweight library that makes the navigation in an Android app easy.  
-It was designed to be used with the MVP pattern (try [Moxy](https://github.com/Arello-Mobile/Moxy)), but will work great with any architecture.
+Cicerone (a guide who gives information about antiquities and places of interest to sightseers) is a lightweight library that makes the navigation in an Android app easy.  
+It was designed to be used with the MVP/MVVM/MVI patterns but will work great with any architecture.
 
 ## Main advantages
-+ is not tied to Fragments
-+ not a framework
-+ short navigation calls (no builders)
-+ lifecycle-safe!
-+ functionality is simple to extend
-+ suitable for Unit Testing
++ Is not tied to Fragments
++ Not a framework (very lightweight)
++ Short navigation calls (no builders)
++ Static typed checks for screen parameters!
++ Lifecycle-safe!
++ Functionality is simple to extend
++ Suitable for Unit Testing
 
-## Version 2.+
-+ easy screen result subscription
-+ predefined navigator ready for setup transition animation  
-**See the sample application**
+## Additional features
++ Opening several screens inside single call (for example: deeplink)
++ Provides `FragmentFactory` if it needed
++ `add` or `replace` strategy for opening next screen (see `router.navigateTo` last parameter)
++ Implementation of parallel navigation (Instagram like)
++ Predefined navigator ready for Single-Activity apps
++ Predefined navigator ready for setup transition animation
 
-## How to add
+## How to add Cicerone to your application
 Add the dependency in your build.gradle:
-```groovy
+```kotlin
 dependencies {
     //Cicerone
-    compile 'ru.terrakok.cicerone:cicerone:X.X.X'
+    implementation("com.github.terrakok:cicerone:X.X.X")
 }
 ```
 
 Initialize the library (for example in your Application class):
-```java
-public class SampleApplication extends MvpApplication {
-    public static SampleApplication INSTANCE;
-    private Cicerone<Router> cicerone;
+```kotlin
+class App : Application() {
+    private val cicerone = Cicerone.create()
+    val router get() = cicerone.router
+    val navigatorHolder get() = cicerone.getNavigatorHolder()
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        INSTANCE = this;
-
-        initCicerone();
+    override fun onCreate() {
+        super.onCreate()
+        INSTANCE = this
     }
 
-    private void initCicerone() {
-        cicerone = Cicerone.create();
-    }
-
-    public NavigatorHolder getNavigatorHolder() {
-        return cicerone.getNavigatorHolder();
-    }
-
-    public Router getRouter() {
-        return cicerone.getRouter();
+    companion object {
+        internal lateinit var INSTANCE: App
+            private set
     }
 }
 ```
 
-## How it works?
-![](https://habrastorage.org/files/4df/45d/973/4df45d9733fc4ee0a2f0be933de475b1.png)
+## How does it work?
+<img src="https://github.com/terrakok/Cicerone/blob/master/media/CiceroneDiagram.png" alt="CiceroneDiagram.png" width="800"/>
 
-Presenter calls navigation method of Router.
+The `Presenter` calls the navigation method of `Router`.
 
-```java
-public class SamplePresenter extends Presenter<SampleView> {
-    private Router router;
+```kotlin
+class SamplePresenter(
+    private val router: Router
+) : Presenter<SampleView>() {
 
-    public SamplePresenter() {
-        router = SampleApplication.INSTANCE.getRouter();
+    fun onOpenNewScreen() {
+        router.navigateTo(SomeScreen())
     }
 
-    public void onBackCommandClick() {
-        router.exit();
-    }
-
-    public void onForwardCommandClick() {
-        router.navigateTo("Some screen");
+    fun onBackPressed() {
+        router.exit()
     }
 }
 ```
 
-Router converts the navigation call to the set of Commands and sends them to CommandBuffer.  
+`Router` converts the navigation call to the set of commands and sends them to `CommandBuffer`.
 
-CommandBuffer checks whether there are _"active"_ Navigator:  
-If yes, it passes the commands to the Navigator. Navigator will process them to achive the desired transition.  
-If no, then CommandBuffer saves the commands in a queue, and will apply them as soon as new _"active"_ Navigator will appear.  
+`CommandBuffer` checks whether there are the `_"active"_ Navigator`:
+- If yes, it passes the commands to the Navigator. `Navigator` will process them to achive the desired transition.
+- If no, then `CommandBuffer` saves the commands in a queue, and will apply them as soon as a new `_"active"_ Navigator` will appear.
 
-```java
-protected void executeCommand(Command command) {
-    if (navigator != null) {
-        navigator.applyCommand(command);
-    } else {
-        pendingCommands.add(command);
-    }
+```kotlin
+fun executeCommands(commands: Array<out Command>) {
+    navigator?.applyCommands(commands) ?: pendingCommands.add(commands)
 }
 ```
 
-Navigator processes the navigation commands. Usually it is an anonymous class inside the Activity.  
-Activity provides Navigator to the CommandBuffer in _onResume_ and removes it in _onPause_.  
+`Navigator` processes the navigation commands. Usually it is an anonymous class inside `Activity`.
+`Activity` provides `Navigator` to the `CommandBuffer` in `_onResume_` and removes it in `_onPause_`.
 
-**Attention**: Use _onResumeFragments()_ with FragmentActivity ([more info](https://developer.android.com/reference/android/support/v4/app/FragmentActivity.html#onResume()))
+**Attention**: Use `_onResumeFragments()_` with `FragmentActivity` ([more info](https://developer.android.com/reference/android/support/v4/app/FragmentActivity.html#onResume()))
 
-```java
-@Override
-protected void onResume() {
-    super.onResume();
-    SampleApplication.INSTANCE.getNavigatorHolder().setNavigator(navigator);
+```kotlin
+private val navigator = AppNavigator(this, R.id.container)
+
+override fun onResumeFragments() {
+    super.onResumeFragments()
+    navigatorHolder.setNavigator(navigator)
 }
 
-@Override
-protected void onPause() {
-    super.onPause();
-    SampleApplication.INSTANCE.getNavigatorHolder().removeNavigator();
+override fun onPause() {
+    navigatorHolder.removeNavigator()
+    super.onPause()
 }
-
-private Navigator navigator = new Navigator() {
-    @Override
-    public void applyCommand(Command command) {
-        //implement commands logic
-    }
-};
 ```
 
 ## Navigation commands
-This commands set will fulfill the needs of the most applications. But if you need something special - just add it!
-+ Forward - Opens new screen  
-![](https://habrastorage.org/files/862/77e/b20/86277eb20b574dae8307ac4f64b0f090.png)
-+ Back - Rolls back the last transition  
-![](https://habrastorage.org/files/059/b63/2d3/059b632d3a7c4515a534b9e5e881c8f0.png)
-+ BackTo - Rolls back to the needed screen in the screens chain  
-![](https://habrastorage.org/files/a45/4f4/c34/a454f4c340764632ad0669014ad5550d.png)
-+ Replace - Replaces the current screen  
-![](https://habrastorage.org/files/4ae/95c/fee/4ae95cfee4c04f038ad17d358ab08d07.png)
-+ SystemMessage - Shows system message (Alert, Toast, Snack, etc.)  
-![](https://habrastorage.org/files/6e7/1a6/4ed/6e71a64edec04079bf33faa7ab39606f.png)
+These commands will fulfill the needs of the most applications. But if you need something special - just add it!
++ Forward - Opens new screen
+![](https://github.com/terrakok/Cicerone/raw/master/media/forward_img.png)
++ Back - Rolls back the last transition
+![](https://github.com/terrakok/Cicerone/raw/master/media/back_img.png)
++ BackTo - Rolls back to the needed screen in the screens chain
+![](https://github.com/terrakok/Cicerone/raw/master/media/backTo_img.png)
++ Replace - Replaces the current screen
+![](https://github.com/terrakok/Cicerone/raw/master/media/replace_img.png)
 
-## Predefined navigators
-The library provides predefined navigators for _Fragments_ to use inside _Activity_.    
-To use, just provide it with the container and _FragmentManager_ and override few simple methods.  
-```java
-private Navigator navigator = new SupportAppNavigator(this, R.id.container) {
-    @Override
-    protected Intent createActivityIntent(Context context, String screenKey, Object data) {
-        return null;
-    }
-
-    @Override
-    protected Fragment createFragment(String screenKey, Object data) {
-        switch (screenKey) {
-            case Screens.PROFILE_SCREEN:
-                return new ProfileFragment();
-            case Screens.SELECT_PHOTO_SCREEN:
-                return SelectPhotoFragment.getNewInstance((int) data);
-        }
-        return null;
-    }
-
-    @Override
-    protected void setupFragmentTransactionAnimation(
-                Command command,
-                Fragment currentFragment,
-                Fragment nextFragment,
-                FragmentTransaction fragmentTransaction) {
-        //setup animation
-    }
-};
+## Predefined navigator
+The library provides predefined navigator for _Fragments_ and _Activity_.
+To use, just provide it with the container and _FragmentManager_.
+```kotlin
+private val navigator = AppNavigator(this, R.id.container)
 ```
-## Sample
-To see how to add, initialize and use the library and predefined navigators check out the sample.
 
-![](https://habrastorage.org/web/a94/d73/653/a94d736534694d9daa994e0c260fca28.gif)
-![](https://habrastorage.org/web/6dd/a19/15c/6dda1915cdcf4f14bed16fcffb3fd938.gif)
-![](https://habrastorage.org/web/a63/881/7f8/a638817f8bba49daacc4fa427987fabb.gif)
+A custom navigator can be useful sometimes:
+```kotlin
+private val navigator = object : AppNavigator(this, R.id.container) {
+    override fun setupFragmentTransaction(
+        screen: FragmentScreen,
+        fragmentTransaction: FragmentTransaction,
+        currentFragment: Fragment?,
+        nextFragment: Fragment
+    ) {
+        //setup your animation
+    }
+
+    override fun applyCommands(commands: Array<out Command>) {
+        hideKeyboard()
+        super.applyCommands(commands)
+    }
+}
+```
+
+## Screens
+Describe your screens as you like e.g. create a Kotlin `object` with all application screens:
+```kotlin
+object Screens {
+    fun Main() = FragmentScreen { MainFragment() }
+    fun AddressSearch() = FragmentScreen { AddressSearchFragment() }
+    fun Profile(userId: Long) = FragmentScreen("Profile_$userId") { ProfileFragment(userId) }
+    fun Browser(url: String) = ActivityScreen { Intent(Intent.ACTION_VIEW, Uri.parse(url))  }
+}
+```
+
+Additional you can use `FragmentFactory` for creating your screens:
+```kotlin
+fun SomeScreen() = FragmentScreen { factory: FragmentFactory -> ... }
+```
+
+## Screen parameters and result listener
+```kotlin
+//you have to specify screen parameters via new FragmentScreen creation
+fun SelectPhoto(resultKey: String) = FragmentScreen {
+    SelectPhotoFragment.getNewInstance(resultKey)
+}
+```
+
+```kotlin
+//listen result
+fun onSelectPhotoClicked() {
+    router.setResultListener(RESULT_KEY) { data ->
+        view.showPhoto(data as Bitmap)
+    }
+    router.navigateTo(SelectPhoto(RESULT_KEY))
+}
+
+//send result
+fun onPhotoClick(photo: Bitmap) {
+    router.sendResult(resultKey, photoRes)
+    router.exit()
+}
+```
+
+## Sample
+To see how to add, initialize and use the library and predefined navigators see the **sample project**  
+(thank you [@Javernaut](https://github.com/Javernaut) for support new library version and migrate sample project to Kotlin!)
+
+For more complex use case check out the [GitFox (Android GitLab client)](https://gitlab.com/terrakok/gitlab-client)
+
+## Applications that use Cicerone
+<a href="https://play.google.com/store/apps/details?id=ru.foodfox.client"><img src="https://play-lh.googleusercontent.com/gWYedIqy8QujCQOn0kzEIBEkGLBSpuKvFm-fMcfkWnJ1Oirtv847xAE4OyhAaohdcp5V=s360" width="64" /> Яндекс.Еда — доставка еды/продуктов. Food delivery</a><br>
+<a href="https://play.google.com/store/apps/details?id=com.kms.me"><img src="https://play-lh.googleusercontent.com/IBzu0tlHd_amw2HbjBLOZiCfK-0tn0CnwkMdOd1toP23rdHUV-i7L2ViNKgIg687=s360" width="64" /> Kaspersky Internet Security</a><br>
+<a href="https://play.google.com/store/apps/details?id=com.deliveryclub"><img src="https://play-lh.googleusercontent.com/m6-gFunvj7aQD5fdv8EdJZBN5M4REIobTaPZPYS0K5Td7CNYnazN7fOKiPwwaY3hJw=s360" width="64" /> Delivery Club – Доставка еды и продуктов</a><br>
+<a href="https://play.google.com/store/apps/details?id=ru.hh.android"><img src="https://play-lh.googleusercontent.com/YpAV7Q-ZJhI5tzFk_wEX-7-x2BydtnCtFTVUrmq0zAO6jLCLA4nNcfem3p_Pyowg9w=s360" width="64" /> Поиск работы на hh. Вакансии рядом с домом</a><br>
+<a href="https://play.google.com/store/apps/details?id=com.foodient.whisk"><img src="https://play-lh.googleusercontent.com/eKotZjJcZOU2_L9t2l34EEY7aGl5zhvKVuEbF0Kc4MRs_pAC2SJgOnWMkMTFjR_e9EY=s360" width="64" /> Whisk: Recipe Saver, Meal Planner & Grocery List</a><br>
+<a href="https://play.google.com/store/apps/details?id=kz.beeline.odp"><img src="https://play-lh.googleusercontent.com/hzgjpQQpy6Z-Byye0aVKSv9P7h8yx58i6pVkQtiM6jB99iWFXjYfKeaPqJ3wm6Rtb38=s360" width="64" /> Мой Beeline (Казахстан)</a><br>
+<a href="https://play.google.com/store/apps/details?id=com.mercuryo.app"><img src="https://play-lh.googleusercontent.com/FKulXdc15r5PWX6hTZi2i3iaJjcQHwd9xParp6YPiQ2KiBqza7jwEt_b_tqLwXpyEHg=s360" width="64" /> Mercuryo Bitcoin Cryptowallet</a><br>
+<a href="https://play.google.com/store/apps/details?id=com.warefly.checkscan"><img src="https://play-lh.googleusercontent.com/2c2uuiSl2vwGgp-vdI-VArQEMdSSXk1neUK5A-Udc0WANPcvp5kBJFEugrFiXnxUc7k=s360" width="64" /> ЧекСкан - кэшбэк за чеки, цены и акции в магазинах</a><br>
+<a href="https://github.com/eduard1abdulmanov123/News"><img src="https://raw.githubusercontent.com/eduard1abdulmanov123/News/dev/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="64" /> RSS Reader для Вести.Ru</a><br>
+<a href="https://play.google.com/store/apps/details?id=com.epam.connect.android"><img src="https://play-lh.googleusercontent.com/aN7R6BiR7yt7b3oEoBI30pVwzsdzaWe3TWpw8c9igqoOj79Pm2xVh4_C4qwjSKwjVio=s360" width="64" /> EPAM Connect</a><br>
+<a href="https://play.google.com/store/apps/details?id=org.consumerreports.ratings"><img src="https://play-lh.googleusercontent.com/dEdOwZOjXAdamytxY1TgY8LS-Hc9FKCcit5HP1RyaKqRAWjDJEyFSQS1XlqQPpeY5UI=s360" width="64" /> Consumer Reports: Product Reviews & Ratings</a><br>
+<a href="https://play.google.com/store/apps/details?id=ru.zakaz.android"><img src="https://play-lh.googleusercontent.com/jj18yK2dB2MHZ_QdO21aXyznGXteIF2q4mgxY4ubLhFv9gwZqHVDeu1i2FmanS-0Furm=s360" width="64" /> Zakaz.ru</a><br>
 
 ## Participants
-+ idea and code - Konstantin Tskhovrebov (@terrakok)
-+ architecture advice, documentation and publication - Vasili Chyrvon (@Jeevuz)
++ Idea and code - Konstantin Tskhovrebov (@terrakok)
++ Architecture advice, documentation and publication - Vasili Chyrvon (@Jeevuz)
 
 ## License
 ```
-The MIT License (MIT)
+MIT License
+
+Copyright (c) 2017 Konstantin Tskhovrebov (@terrakok)
+                   and Vasili Chyrvon (@Jeevuz)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

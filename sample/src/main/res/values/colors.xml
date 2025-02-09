@@ -4,6 +4,8 @@
     <color name="primary_dark">#c0392b</color>
     <color name="accent">#e67e22</color>
 
+    <color name="semitransparent">#99000000</color>
+
 
     <color name="alizarin">#e74c3c</color>
     <color name="carrot">#e67e22</color>
@@ -11,4 +13,5 @@
     <color name="greensea">#16a085</color>
     <color name="nephritis">#27ae60</color>
     <color name="belizehole">#2980b9</color>
+    <color name="purple">#9329B9</color>
 </resources>
